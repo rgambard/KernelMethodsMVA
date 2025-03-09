@@ -37,8 +37,20 @@ n = x.shape[0]
 #plt.plot(x[:,0],y, 'o')
 #plt.show()
 
-def gauss_kernel(x, y,sigma=0.75):
+def gauss_kernel(x, y,sigma=0.02):
     return np.exp(-(np.dot((x-y).T,(x-y)))/(2*sigma**2))
+
+def K_gauss_kernel(x, y, sigma=0.02):
+    #compute the norm of x squared
+    x_norm = np.sum(x**2, axis=-1)
+    #compute the norm of y squared
+    y_norm = np.sum(y**2, axis=-1)
+    #compute the dot product between x and y
+    dot_product = np.dot(x, y.T)
+    #compute the kernel matrix
+    K = np.exp(-(x_norm[:, None] + y_norm[None, :] - 2 * dot_product) / (2 * sigma**2))
+    return K
+
 
 def euc_kernel(x, y):
     return np.dot(x.T,y)
@@ -79,13 +91,13 @@ def WLR_step(alpha_0,K,y,lambd=1,eps=10**(-6)): #résolution du problème de min
     z = np.zeros(n)
     for i,mi in enumerate(M):
         P[i] = -logistic_funct(-y[i]*mi)
-        W[i] = logistic_funct(y[i]*mi)*logistic_funct(-y[i]*mi)
+        W[i] = logistic_funct(mi)*logistic_funct(-mi)
         z[i] = mi + y[i]/(logistic_funct(y[i]*mi)+eps)
         #z[i] = mi - P[i]*y[i]/W[i]
     W = np.diag(W)
     return solve_WKRR(K, z, W, lambd)
     
-def WLR(K,y,alpha0=np.zeros(n),lambd=1,min_steps = 0,max_steps = 100,eps=(10**(-6))/(n**2)): #fonction qui résout le problème de minimisation avec la fonction logistique
+def WLR(K,y,alpha0,lambd=1,min_steps = 0,max_steps = 100,eps=(10**(-6))/(n**2)): #fonction qui résout le problème de minimisation avec la fonction logistique
     alpha = alpha0.copy()
     for _ in range(min_steps): #Un certain nombre de pas pour initialiser
         alpha = WLR_step(alpha,K,y,lambd)
@@ -97,11 +109,6 @@ def WLR(K,y,alpha0=np.zeros(n),lambd=1,min_steps = 0,max_steps = 100,eps=(10**(-
             break
         alpha = alpha_new
     return alpha
-
-K = compute_K_matrix(euc_kernel,x)
-
-alphaLR = WLR(K, y,lambd=0.000001)
-flr = give_f(alphaLR,euc_kernel, x)
 
 #x2 = np.concatenate([np.linspace(-3,3,1000),np.zeros(1000)]).reshape(1000,2)
 #y2 = x2[:,0]>0
@@ -121,17 +128,45 @@ flr = give_f(alphaLR,euc_kernel, x)
 
 #print(compute_error(y_pred_rr,y))
 #print(compute_error(y_pred_lr,y))
+train_ratio = 90
+val_ratio = 10
+test_ratio = 100-train_ratio-val_ratio
 
-x2 = read_X_mat100('Xtr1_mat100.csv')
-y2 = read_Y('Ytr1.csv')
-y2 = 2*y2-1
+x0 = read_X_mat100()#[xmin:xmax]
+y0 = read_Y()#[xmin:xmax]
 
-y_pred_lr = np.array([flr(x) for x in x])#np.array([-1 if flr(x2[i])<0 else 1 for i in range(len(x2))])
-y_pred_lr = 2*(y_pred_lr>0)-1
-print(f'train error : {compute_error(y_pred_lr,y)}')
+x1 = read_X_mat100('Xtr1_mat100.csv')#[xmin:xmax]
+y1 = read_Y('Ytr1.csv')#[xmin:xmax]
 
-y_pred_lr2 = np.array([flr(x) for x in x2])#np.array([-1 if flr(x2[i])<0 else 1 for i in range(len(x2))])
-y_pred_lr2 = 2*(y_pred_lr2>0)-1
-print(f'val error : {compute_error(y_pred_lr2,y2)}')
-#y_pred_rr2 = np.array([-1 if frr(x2[i])<0 else 1 for i in range(len(x2))])
-#print(compute_error(y_pred_rr2,y2))
+x2 = read_X_mat100('Xtr2_mat100.csv')#[xmin:xmax]
+y2 = read_Y('Ytr2.csv')#[xmin:xmax]
+
+x = x0#np.concatenate((x0,x1,x2))
+y = y0#np.concatenate((y0,y1,y2))
+y = 2*y-1 #met en -1 et 1
+
+c = list(zip(x, y))
+np.random.shuffle(c)
+X, Y = zip(*c)
+
+x_train = np.array(X[:train_ratio*len(X)//100])
+y_train = np.array(Y[:train_ratio*len(Y)//100])
+
+x_val = np.array(X[train_ratio*len(X)//100:(train_ratio+val_ratio)*len(X)//100])
+y_val = np.array(Y[train_ratio*len(Y)//100:(train_ratio+val_ratio)*len(Y)//100])
+
+K = K_gauss_kernel(x_train, x_train)
+
+n = x_train.shape[0]
+
+alphaLR = WLR(K, y_train,np.zeros(n),lambd=0.001)
+flr = give_f(alphaLR,gauss_kernel, x)
+
+pred_train = np.array([flr(x_train[i]) for i in range(len(x_train))])
+pred_train = 2*(pred_train>0)-1
+
+pred_val = np.array([flr(x_val[i]) for i in range(len(x_val))])
+pred_val = 2*(pred_val>0)-1
+
+print(compute_error(pred_train,y_train))
+print(compute_error(pred_val,y_val))
