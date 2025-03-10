@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def read_X_mat100(filename='Xtr0_mat100.csv'):
+def read_X_mat100(filename='data/Xtr0_mat100.csv'):
     data = []
     with open(filename, 'r') as file:
         for row in file:
@@ -10,7 +10,7 @@ def read_X_mat100(filename='Xtr0_mat100.csv'):
 
     return np.array(data)
 
-def read_Y(filename='Ytr0.csv'):
+def read_Y(filename='data/Ytr0.csv'):
     data = []
     with open(filename, 'r') as file:
         for row in file:
@@ -134,12 +134,6 @@ test_ratio = 100-train_ratio-val_ratio
 
 x0 = read_X_mat100()#[xmin:xmax]
 y0 = read_Y()#[xmin:xmax]
-
-x1 = read_X_mat100('Xtr1_mat100.csv')#[xmin:xmax]
-y1 = read_Y('Ytr1.csv')#[xmin:xmax]
-
-x2 = read_X_mat100('Xtr2_mat100.csv')#[xmin:xmax]
-y2 = read_Y('Ytr2.csv')#[xmin:xmax]
 
 x = x0#np.concatenate((x0,x1,x2))
 y = y0#np.concatenate((y0,y1,y2))

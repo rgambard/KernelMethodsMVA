@@ -2,63 +2,92 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from sklearn.linear_model import LogisticRegression
-from collections import Counter
+from kernels import spectrum_kernel, linear_kernel
+from ksvc import KernelSVC, KernelSVC_cvx
 
 
 
 
-def multispectrum_kernel(x,y):
-    return spectrum_kernel(x,y,n_spectr=1)+4*spectrum_kernel(x,y,n_spectr = 2)+9*spectrum_kernel(x,y,n_spectr=3) + 16* spectrum_kernel(x,y,n_spectr = 4)
-#spectrum kernel
-def spectrum_kernel(x,y, n_spectr = 2):
-    """ compute the kernel between x and y """
-    n = len(x)
-    m = len(y)
-    subsequencesx = [x[i:i+n_spectr] for i in range(len(x)-n_spectr+1)]
-    subsequencesy = [y[i:i+n_spectr] for i in range(len(x)-n_spectr+1)]
-    i = 0
-    j = 0
-    nb_same_substrings = 0
-    dictsubx = Counter(subsequencesx)
-    dictsuby = Counter(subsequencesy)
-    nb_same_substrings = sum(dictsubx[sub]*dictsuby[sub] for sub in dictsubx.keys()&dictsuby.keys())
-    return nb_same_substrings
+def read_X_mat100(filename='data/Xtr0_mat100.csv'):
+    data = []
+    with open(filename, 'r') as file:
+        for row in file:
+            row_s = row.split(' ')
+            data.append(np.array(row_s, dtype=float))
 
+    return np.array(data)
 
+def read_Y(filename='data/Ytr2.csv'):
+    data = []
+    with open(filename, 'r') as file:
+        for row in file:
+            row_s = row[-2]
+            if row_s == 'd':
+                pass
+            else:
+                data.append(int(row_s))
+    return np.array(data)
 
-def kernel_matrix(X, Y, kernel_fct):
-    """ compute the kernel beetween all elements in X and all elements in Y """
-    n = X.shape[0]
-    m = Y.shape[0]
-    kernel_mat = np.zeros((n,m))
+data_type = "seq"
 
-    for i in tqdm(range(n), desc="computing kernel matrix"):
-        for j in range(m):
-            kernel_mat[i,j] = kernel_fct(X[i], Y[j])
-    return kernel_mat
-
-
-
+if data_type=="seq":
 #we load the data
-xin = pd.read_csv('data/Xtr2.csv')
-yin = pd.read_csv('data/Ytr2.csv')
-data = pd.merge(xin, yin, on='Id', how='inner')
-data = data.sample(frac=1, random_state=42).reset_index(drop=True)
+    x0 = pd.read_csv('data/Xtr2.csv')
+    x0 = x0['seq'].values
+    kernel = spectrum_kernel(5).kernel
 
-# we split the dataset to get a validation set
-n_train = 1600
-n_test = 400
-X_train, X_test = data['seq'].values[:n_train], data['seq'].values[n_train:n_train+n_test]
-Y_train, Y_test = data['Bound'].values[:n_train], data['Bound'].values[n_train:n_train+n_test]
+else:
+    x0 = read_X_mat100('data/Xtr0_mat100.csv')
+    x0 = x0/x0.std()
+    kernel = linear_kernel().kernel
 
 
-# we compute the Gram matrix for train and test
-K_train = kernel_matrix(X_train, X_train, spectrum_kernel)
-K_test = kernel_matrix(X_test, X_train, spectrum_kernel)
+train_ratio = 20
+val_ratio = 50
 
-print("built kernel matrices")
+y0 = read_Y('data/Ytr2.csv')
+x = x0
+x = x
+y = y0
+y = 2*y-1 #met en -1 et 1
 
+c = list(zip(x, y))
+np.random.seed(13)
+np.random.shuffle(c)
+X, Y = zip(*c)
+x_train = np.array(X[:train_ratio*len(X)//100])
+y_train = np.array(Y[:train_ratio*len(Y)//100])
+
+x_val = np.array(X[-val_ratio*len(X)//100:])
+y_val = np.array(Y[-val_ratio*len(Y)//100:])
+
+print("training on ", x_train.shape[0]," data points ","val on ", x_val.shape[0], "data points")
+
+
+kernel = linear_kernel(kernel=kernel).kernel
+
+svm_cvx=False
+svm =True
+klr =False
+if svm_cvx :
 # we solve the logistic regression problem
-model = LogisticRegression(solver='lbfgs', max_iter=100000, verbose=1, C = 0.00001)
-model.fit(K_train, Y_train)
-print(f"Accuracy: {model.score(K_test, Y_test):.2f}")
+    print("SVM_cvx")
+    model = KernelSVC_cvx(1,kernel)
+    model.fit(x_train, y_train)
+    print(f"Accuracy: {model.score(x_val, y_val):.2f}")
+    print(f"Accuracy on train: {model.score(x_train, y_train):.2f}")
+ 
+if svm :
+# we solve the logistic regression problem
+    print("SVM")
+    model = KernelSVC(0.5,kernel)
+    model.fit(x_train, y_train)
+    print(f"Accuracy: {model.score(x_val, y_val):.2f}")
+    print(f"Accuracy on train: {model.score(x_train, y_train):.2f}")
+if klr:
+    print("logistic regression")
+    model = LogisticRegression(solver='lbfgs', max_iter=10000000, verbose=3, C = 1)
+    model.fit(kernel(x_train,x_train), y_train)
+    print(f"Accuracy: {model.score(kernel(x_val, x_train), y_val):.2f}")
+    print(f"Accuracy on train: {model.score(kernel(x_train, x_train), y_train):.2f}")
+
