@@ -56,11 +56,11 @@ x1 = read_X_mat100('Xte1_mat100.csv')#[xmin:xmax]
 x2 = read_X_mat100('Xte2_mat100.csv')#[xmin:xmax]
 
 x = np.concatenate((x0,x1,x2))
-prediction_x0 = predict(alpha_x0,support_vectors_x0,gauss_kernel,x)
+prediction_x0 = predict(alpha_x0,support_vectors_x0,gauss_kernel,x0)
 print(np.mean(prediction_x0>0))
-prediction_x1 = predict(alpha_x1,support_vectors_x1,gauss_kernel,x)
+prediction_x1 = predict(alpha_x1,support_vectors_x1,gauss_kernel,x1)
 print(np.mean(prediction_x1>0))
-prediction_x2 = predict(alpha_x2,support_vectors_x2,gauss_kernel,x)
+prediction_x2 = predict(alpha_x2,support_vectors_x2,gauss_kernel,x2)
 print(np.mean(prediction_x2>0))
 
 prediction = np.concatenate((prediction_x0,prediction_x1,prediction_x2))
