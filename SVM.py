@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tqdm
 
-def read_X_mat100(filename='data/Xtr0_mat100.csv'):
+def read_X_mat100(filename='Xtr0_mat100.csv'):
     data = []
     with open(filename, 'r') as file:
         for row in file:
@@ -29,8 +29,14 @@ test_ratio = 100-train_ratio-val_ratio
 x0 = read_X_mat100()#[xmin:xmax]
 y0 = read_Y()#[xmin:xmax]
 
-x = x0
-y = y0
+x1 = read_X_mat100('Xtr1_mat100.csv')#[xmin:xmax]
+y1 = read_Y('Ytr1.csv')#[xmin:xmax]
+
+x2 = read_X_mat100('Xtr2_mat100.csv')#[xmin:xmax]
+y2 = read_Y('Ytr2.csv')#[xmin:xmax]
+
+x = x2#np.concatenate((x0,x1,x2))
+y = y2#np.concatenate((y0,y1,y2))
 y = 2*y-1 #met en -1 et 1
 
 c = list(zip(x, y))
@@ -41,14 +47,15 @@ X, Y = zip(*c)
 x_train = np.array(X[:train_ratio*len(X)//100])
 y_train = np.array(Y[:train_ratio*len(Y)//100])
 
-x_val = np.array(X[-val_ratio*len(X)//100:])
-y_val = np.array(Y[-val_ratio*len(Y)//100:])
+
+x_val = np.array(X[train_ratio*len(X)//100:(train_ratio+val_ratio)*len(X)//100])
+y_val = np.array(Y[train_ratio*len(Y)//100:(train_ratio+val_ratio)*len(Y)//100])
 
 def param_set(ni=x_train.shape[0]):
-    if ni>=2000:
+    if ni>0:
         step_size = 0.000001
-        lambd = 1/1000
-        n_steps = 1000
+        lambd = 1/100000
+        n_steps = 100
         return step_size,lambd,n_steps
     else:
         step_size = 1/(ni**2)
@@ -56,7 +63,7 @@ def param_set(ni=x_train.shape[0]):
         n_steps = 2*ni
     return step_size,lambd,n_steps
 
-def gauss_kernel(x, y, sigma=0.02):
+def gauss_kernel(x, y, sigma=0.05):
     #compute the norm of x squared
     x_norm = np.sum(x**2, axis=-1)
     #compute the norm of y squared
@@ -124,5 +131,5 @@ print(np.mean(prediction_val*y_val>0))
 print(np.mean(prediction_val*y_val==0))
 
 #save the model
-np.save('alpha90.npy',alpha)
-np.save('support_vectors90.npy',support_vectors)
+np.save('alpha90_x2.npy',alpha)
+np.save('support_vectors90_x2.npy',support_vectors)
