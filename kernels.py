@@ -140,8 +140,8 @@ class spectrum_kernel_vec():
         if weights is not None:
             nX = nX*weights[None,:]
             nY = nY*weights[None,:]
-        nX = nX/np.sqrt(np.diag(nX@nX.T))[:,None]
-        nY = nY/np.sqrt(np.diag(nY@nY.T))[:,None]
+        nX = nX#/np.sqrt(np.diag(nX@nX.T))[:,None]
+        nY = nY#/np.sqrt(np.diag(nY@nY.T))[:,None]
         return nX@nY.T+1
 
     def to_vectors(self,X):

@@ -42,8 +42,8 @@ if data_type=="seq":
     statsx = stats(x0,k)
     keys = sorted(statsx.keys())
     print("nb keys", len(keys))
-    kernel = linear_kernel(LAkernel(beta = 0.5, d=-1, e=-11))
-    #kernel = spectrum_kernel_vec(k, keys)
+    #kernel = linear_kernel(LAkernel(beta = 0.5, d=-1, e=-11))
+    kernel = spectrum_kernel_vec(k, keys)
     #weights = get_weights(x0,y0,k,keys)
 
     #kernel.weights = np.sqrt(weights)/10
@@ -87,8 +87,8 @@ print("training on ", x_train.shape[0]," data points ","val on ", x_val.shape[0]
 
 
 svm_cvx=False
-svm = True
-isvm = False
+svm = False
+isvm = True
 klr =False
 if svm_cvx :
 # we solve the logistic regression problem
@@ -108,7 +108,7 @@ if svm :
 if isvm :
 # we solve the logistic regression problem
     print("SVM")
-    model = improvingKernelSVC(0.0001,kernel, keys)
+    model = improvingKernelSVC(0.005,kernel, keys)
     model.fit(x_train, y_train, x_val, y_val)
     print(f"Accuracy: {model.score(x_val, y_val):.2f}")
     print(f"Accuracy on train: {model.score(x_train, y_train):.2f}")

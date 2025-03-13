@@ -318,13 +318,17 @@ class improvingKernelSVC():
             answers = Y*(K@alpha)
             support = answers < 1
             derivatives = np.zeros(len(self.keys))
+            Kt = 0
             for i in range(len(self.keys)):
                 Ki=vecX[:,i][:,None]@vecX[:,i][None,:]
+                Kt += Ki
                 derivative_norm = 1/2*alpha@(Ki@alpha)
                 derivative_acc = -self.C*np.sum(support*Y*(Ki@alpha))
                 derivatives[i] = derivative_norm+derivative_acc
             #print(derivatives)
             self.weights = self.weights-self.lambd*derivatives
+            # update weights
+            self.weights = len(self.keys)*np.maximum(self.weights,0)/np.sum(self.weights)
             
             if it %20==0:
                 Kacc = self.kernel(Xacc,X)
@@ -340,10 +344,8 @@ class improvingKernelSVC():
                 print("accuracy val", accuracy)
                 print("norm",1/2*alpha@K@alpha)
 
-                # update weights
-                self.weights = len(self.keys)*self.weights/np.sum(self.weights)
                 print("weights std : ", self.weights.std())
                 print("absolute change : ", np.sum(np.abs(old_weights-self.weights)))
                 old_weights = self.weights.copy()
-                #self.svc.fit(X,Y)
+                self.svc.fit(X,Y)
 
