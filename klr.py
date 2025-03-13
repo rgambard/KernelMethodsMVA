@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from sklearn.linear_model import LogisticRegression
-from kernels import spectrum_kernel, linear_kernel, LAkernel, sum_kernel, constant_kernel, sqrt_kernel, stats, to_vectors, spectrum_kernel_vec, swscore, convert, get_weights
-from ksvc import KernelSVC, KernelSVC_cvx, improvingKernelSVC
+from kernels import spectrum_kernel, linear_kernel, LAkernel, sum_kernel, constant_kernel, sqrt_kernel, stats, to_vectors, spectrum_kernel_vec, swscore, convert, get_weights, gauss_kernel, SWkernel
+from ksvc import KernelSVC, KernelSVC_cvx, improvingKernelSVC, GDKernelSVC
 
 
 
@@ -29,23 +29,24 @@ def read_Y(filename='data/Ytr2.csv'):
     return np.array(data)
 
 data_type = "seq"
-
+i=2
 if data_type=="seq":
 #we load the data
-    data = pd.read_csv('data/Xtr2.csv')
+    data = pd.read_csv('data/Xtr'+str(i)+'.csv')
     seqs = data['seq'].values
     x0 = seqs
 
     k = 4
 
-    y0 = read_Y('data/Ytr2.csv')
+    y0 = read_Y('data/Ytr'+str(i)+'.csv')
     statsx = stats(x0,k)
     keys = sorted(statsx.keys())
     print("nb keys", len(keys))
-    kernel = spectrum_kernel_vec(k,keys)
+    kernel = linear_kernel(LAkernel(beta = 0.5, d=-1, e=-11))
+    #kernel = spectrum_kernel_vec(k, keys)
     #weights = get_weights(x0,y0,k,keys)
 
-    #kernel.weights = np.sqrt(weights)/g0
+    #kernel.weights = np.sqrt(weights)/10
 
     #kernel = spectrum_kernel(5).kernel
     #kernel2 = linear_kernel(spectrum_kernel(4).kernel).kernel
@@ -53,15 +54,15 @@ if data_type=="seq":
     #kernel = sum_kernel([kernel1, kernel2]).kernel
 
 else:
-    x0 = read_X_mat100('data/Xtr0_mat100.csv')
+    x0 = read_X_mat100('data/Xtr'+str(i)+'_mat100.csv')
     x0 = x0/x0.std()
-    kernel = linear_kernel()
+    y0 = read_Y('data/Ytr'+str(i)+'.csv')
+    kernel = gauss_kernel()
 
 
-train_ratio = 10
+train_ratio =40
 val_ratio = 50
 
-y0 = read_Y('data/Ytr2.csv')
 x = np.concatenate([x0], axis=0)
 y = np.concatenate([y0], axis=0)
 #y = np.concatenate((y,y))
@@ -80,10 +81,14 @@ y_val = np.array(Y[-val_ratio*len(Y)//100:])
 print("training on ", x_train.shape[0]," data points ","val on ", x_val.shape[0], "data points")
 
 
+#weights = get_weights(x_train,y_train,k,keys)
+
+#kernel.weights = np.sqrt(weights)/10
+
 
 svm_cvx=False
-svm = False
-isvm = True
+svm = True
+isvm = False
 klr =False
 if svm_cvx :
 # we solve the logistic regression problem
@@ -96,14 +101,14 @@ if svm_cvx :
 if svm :
 # we solve the logistic regression problem
     print("SVM")
-    model = KernelSVC(0.4,kernel, keys)
+    model = KernelSVC(30.0,kernel, epsilon = 0.01)
     model.fit(x_train, y_train)
     print(f"Accuracy: {model.score(x_val, y_val):.2f}")
     print(f"Accuracy on train: {model.score(x_train, y_train):.2f}")
 if isvm :
 # we solve the logistic regression problem
     print("SVM")
-    model = improvingKernelSVC(1000,kernel, keys)
+    model = improvingKernelSVC(0.0001,kernel, keys)
     model.fit(x_train, y_train, x_val, y_val)
     print(f"Accuracy: {model.score(x_val, y_val):.2f}")
     print(f"Accuracy on train: {model.score(x_train, y_train):.2f}")

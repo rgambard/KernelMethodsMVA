@@ -7,7 +7,30 @@ from numba import njit
 # Create a memory object to cache results
 memory = Memory("cache_directory", verbose=0)
 
-#class exp_kernel():
+class gauss_kernel():
+    def __init__(self, sigma=5, kernel = None):
+        self.sigma = sigma
+        self.kernel = kernel
+
+    def __call__(self,X, Y):
+        if self.kernel is not None:
+            x = self.kernel(X,X)
+            y = self.kernel(X,Y).T
+        else:
+            x = X
+            y = Y
+        x = x.astype(np.float64)
+        y = y.astype(np.float64)
+        sigma = self.sigma
+        #compute the norm of x squared
+        x_norm = np.sum(x**2, axis=-1)
+        #compute the norm of y squared
+        y_norm = np.sum(y**2, axis=-1)
+        #compute the dot product between x and y
+        dot_product = np.dot(x, y.T)
+        #compute the kernel matrix
+        K = np.exp(-(x_norm[:, None] + y_norm[None, :] - 2 * dot_product) / (2 * sigma**2))
+        return K
 
 @memory.cache
 def get_weights(x0,y0,k, keys):
@@ -117,8 +140,8 @@ class spectrum_kernel_vec():
         if weights is not None:
             nX = nX*weights[None,:]
             nY = nY*weights[None,:]
-        nX = nX#/np.sqrt(np.diag(nX@nX.T))[:,None]
-        nY = nY#/np.sqrt(np.diag(nY@nY.T))[:,None]
+        nX = nX/np.sqrt(np.diag(nX@nX.T))[:,None]
+        nY = nY/np.sqrt(np.diag(nY@nY.T))[:,None]
         return nX@nY.T+1
 
     def to_vectors(self,X):
@@ -164,20 +187,21 @@ def swkernel(X,Y,e,S):
 def swscore(x,y,g,S):
     n=len(x)
     m = len(y)
-    H = np.zeros((n+1,m+1))
+    H = np.zeros((n+1,m+1), dtype = np.int32)
     for i in range(1,n+1):
         for j in range(1,m+1):
             H[i,j]= max(H[i-1,j-1]+S[x[i-1],y[j-1]], H[i-1,j]-g, H[i,j-1]-g, 0)
-    return H[n,m]
+    return np.max(H)
 
-def lakernel(x, y, g, S):
+@njit
+def lascore(x, y, beta, e, d, S):
     n = len(x)
     m = len(y)
-    M = np.zeros((n+1,m+1), dtype = np.float128)
-    X = np.zeros((n+1,m+1), dtype = np.float128)
-    Y = np.zeros((n+1,m+1),dtype = np.float128)
-    X2 = np.zeros((n+1,m+1),dtype = np.float128)
-    Y2 = np.zeros((n+1,m+1), dtype = np.float128)
+    M = np.zeros((n+1,m+1), dtype = np.float64)
+    X = np.zeros((n+1,m+1), dtype = np.float64)
+    Y = np.zeros((n+1,m+1),dtype = np.float64)
+    X2 = np.zeros((n+1,m+1),dtype = np.float64)
+    Y2 = np.zeros((n+1,m+1), dtype = np.float64)
     for i in range(1,n+1):
         for j in range(1,m+1):
             M[i,j] = math.exp(beta*(S[x[i-1],y[j-1]]))*(1+X[i-1,j-1]+Y[i-1,j-1]+M[i-1,j-1])
@@ -188,32 +212,48 @@ def lakernel(x, y, g, S):
 
     return 1+X2[n,m]+Y2[n,m]+M[n,m]
     
-
-class LAkernel():
-    def __init__(self,beta=0.2, d=1, e=-11):
-        self.beta = beta
-        self.d = d
+class SWkernel():
+    def __init__(self, e=0.2):
         self.e = e
         self.dictionnaryconvert={'C':0,'S':1,'T':2, 'A':3, 'G':4, 'P':5}
-        self.S = np.eye(6)
+        self.S = -np.ones((6,6))+2*np.eye(6)
 
     def convert(self,x):
         return np.array([self.dictionnaryconvert[c] for c in x], dtype = np.int16)
 
     def __call__(self,X,Y):
         """ compute the kernel between x and y """
-        """XeqY = X.shape==Y.shape and (X==Y).all()
+        return swkernel(X,Y,self.e, self.S)
+
+@memory.cache
+def lakernel(X,Y, beta, e, d, S):
+        """ compute the kernel between x and y """
+        XeqY = X.shape==Y.shape and (X==Y).all()
         K = np.zeros((X.shape[0], Y.shape[0]))
         for i in tqdm(range(X.shape[0])):
-            x = self.convert(X[i])
+            x = convert(X[i])
             for j in range(i if XeqY else 0,Y.shape[0]):
-                y = self.convert(Y[j])
-                Kij = swscore(x,y, self.e, self.S)
-                Kii = swscore(x,x, self.e, self.S)
-                Kjj = swscore(y,y, self.e, self.S)
-                K[i,j] = Kij/math.sqrt(Kii*Kjj) +1
+                y = convert(Y[j])
+                Kij = math.log(lascore(x,y, beta, e, d, S))/beta
+                Kii = math.log(lascore(x,x, beta, e, d, S))/beta
+                Kjj = math.log(lascore(y,y,beta, e,d, S))/beta
+                K[i,j] = Kij/math.sqrt(Kii*Kjj) +1 # normalization
                 if XeqY:
                     K[j,i] = Kij/math.sqrt(Kii*Kjj) +1
-        """
-        #K = np.log(K)/self.beta
-        return swkernel(X,Y,self.e, self.S)
+        
+        return K
+
+class LAkernel():
+    def __init__(self,beta=0.2, d=1, e=0.2):
+        self.beta = beta
+        self.d = d
+        self.e = e
+        self.dictionnaryconvert={'C':0,'S':1,'T':2, 'A':3, 'G':4, 'P':5}
+        self.S = -np.ones((6,6))+2*np.eye(6)
+
+    def convert(self,x):
+        return np.array([self.dictionnaryconvert[c] for c in x], dtype = np.int16)
+
+    def __call__(self,X,Y):
+        """ compute the kernel between x and y """
+        return lakernel(X,Y,self.beta,  self.e,self.d, self.S)
