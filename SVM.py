@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tqdm
 
-def read_X_mat100(filename='Xtr0_mat100.csv'):
+def read_X_mat100(filename='data/Xtr0_mat100.csv'):
     data = []
     with open(filename, 'r') as file:
         for row in file:
@@ -29,11 +29,11 @@ test_ratio = 100-train_ratio-val_ratio
 x0 = read_X_mat100()#[xmin:xmax]
 y0 = read_Y()#[xmin:xmax]
 
-x1 = read_X_mat100('Xtr1_mat100.csv')#[xmin:xmax]
-y1 = read_Y('Ytr1.csv')#[xmin:xmax]
+x1 = read_X_mat100('data/Xtr1_mat100.csv')#[xmin:xmax]
+y1 = read_Y('data/Ytr1.csv')#[xmin:xmax]
 
-x2 = read_X_mat100('Xtr2_mat100.csv')#[xmin:xmax]
-y2 = read_Y('Ytr2.csv')#[xmin:xmax]
+x2 = read_X_mat100('data/Xtr2_mat100.csv')#[xmin:xmax]
+y2 = read_Y('data/Ytr2.csv')#[xmin:xmax]
 
 x = x2#np.concatenate((x0,x1,x2))
 y = y2#np.concatenate((y0,y1,y2))
@@ -131,5 +131,5 @@ print(np.mean(prediction_val*y_val>0))
 print(np.mean(prediction_val*y_val==0))
 
 #save the model
-np.save('alpha90_x2.npy',alpha)
-np.save('support_vectors90_x2.npy',support_vectors)
+np.save('models/alpha90_x2.npy',alpha)
+np.save('models/support_vectors90_x2.npy',support_vectors)

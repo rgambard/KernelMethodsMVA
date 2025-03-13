@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def read_X_mat100(filename='Xtr0_mat100.csv'):
+def read_X_mat100(filename='data/Xtr0_mat100.csv'):
     data = []
     with open(filename, 'r') as file:
         for row in file:
@@ -10,7 +10,7 @@ def read_X_mat100(filename='Xtr0_mat100.csv'):
 
     return np.array(data)
 
-def read_Y(filename='Ytr0.csv'):
+def read_Y(filename='data/Ytr0.csv'):
     data = []
     with open(filename, 'r') as file:
         for row in file:
@@ -22,17 +22,17 @@ def read_Y(filename='Ytr0.csv'):
     return np.array(data)
 
 #load model
-alpha_x0 = np.load('alpha90_x0.npy')
+alpha_x0 = np.load('models/alpha90_x0.npy')
 print(alpha_x0)
-support_vectors_x0 = np.load('support_vectors90_x0.npy')
+support_vectors_x0 = np.load('models/support_vectors90_x0.npy')
 
-alpha_x1 = np.load('alpha90_x1.npy')
+alpha_x1 = np.load('models/alpha90_x1.npy')
 print(alpha_x1)
-support_vectors_x1 = np.load('support_vectors90_x1.npy')
+support_vectors_x1 = np.load('models/support_vectors90_x1.npy')
 
-alpha_x2 = np.load('alpha90_x2.npy')
+alpha_x2 = np.load('models/alpha90_x2.npy')
 print(alpha_x2)
-support_vectors_x2 = np.load('support_vectors90_x2.npy')
+support_vectors_x2 = np.load('models/support_vectors90_x2.npy')
 
 def gauss_kernel(x, y, sigma=0.05):
     #compute the norm of x squared
@@ -51,9 +51,9 @@ def predict(alpha,support_vectors,kernel,x):
 #load data
 xmin = 0
 xmax = 1000
-x0 = read_X_mat100('Xte0_mat100.csv')#[xmin:xmax]
-x1 = read_X_mat100('Xte1_mat100.csv')#[xmin:xmax]
-x2 = read_X_mat100('Xte2_mat100.csv')#[xmin:xmax]
+x0 = read_X_mat100('data/Xte0_mat100.csv')#[xmin:xmax]
+x1 = read_X_mat100('data/Xte1_mat100.csv')#[xmin:xmax]
+x2 = read_X_mat100('data/Xte2_mat100.csv')#[xmin:xmax]
 
 x = np.concatenate((x0,x1,x2))
 prediction_x0 = predict(alpha_x0,support_vectors_x0,gauss_kernel,x0)
